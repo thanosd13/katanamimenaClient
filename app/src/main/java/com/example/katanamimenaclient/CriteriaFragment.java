@@ -17,23 +17,39 @@ import android.widget.TextView;
 
 import com.example.katanamimenaclient.adapter.RoomDetailsAdapter;
 import com.example.katanamimenaclient.model.RoomDetails;
+import com.google.gson.Gson;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.net.Socket;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+
+import server.Message;
+import server.MessageType;
+import server.Room;
 
 public class CriteriaFragment extends Fragment {
 
     private int adultsCount = 1;
     private TextView textAdultsCount;
-    private EditText editTextArrivalDate, editTextDepartureDate;
+    private EditText editTextArrivalDate, editTextDepartureDate,editTextPrice,editTextLocation;
     private CheckBox checkBoxStar1, checkBoxStar2, checkBoxStar3, checkBoxStar4, checkBoxStar5;
     private RecyclerView recyclerView;
     private ScrollView criteriaContainer;
     private TextView resultsHeader;
     private Button searchButton;
+
+
 
     public CriteriaFragment() {
         // Required empty public constructor
@@ -62,6 +78,8 @@ public class CriteriaFragment extends Fragment {
 
         editTextArrivalDate = view.findViewById(R.id.arrivalInput);
         editTextDepartureDate = view.findViewById(R.id.departureInput);
+        editTextLocation=view.findViewById(R.id.locationInput);
+        editTextPrice=view.findViewById(R.id.priceInput);
 
         buttonIncrease.setOnClickListener(v -> {
             adultsCount++;
@@ -86,7 +104,13 @@ public class CriteriaFragment extends Fragment {
 
         setupStarCheckBoxes();
 
-        searchButton.setOnClickListener(v -> showResults(view));
+        searchButton.setOnClickListener(v -> {
+            try {
+                showResults(view);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
 
         return view;
     }
@@ -144,7 +168,76 @@ public class CriteriaFragment extends Fragment {
         }
     };
 
-    private void showResults(View view) {
+    private void showResults(View view) throws IOException, ParseException {
+
+
+
+
+        System.out.println("Connecting to server...");
+        Socket dataSocket = new Socket("localhost", 5678);
+        InputStream inputStream = dataSocket.getInputStream();
+        BufferedReader in = new BufferedReader(new InputStreamReader(inputStream));
+        OutputStream os = dataSocket.getOutputStream();
+        PrintWriter out = new PrintWriter(os, true);
+        System.out.println("Connection to server established.");
+
+
+
+        Message message = new Message();
+        message.setType(MessageType.SEARCH.getValue());
+        Room room=new Room();
+        room.setArea(editTextLocation.getText().toString());
+        room.setNoOfPeople(adultsCount);
+        room.setUserRating(0);
+        if(checkBoxStar1.isChecked()){
+            room.setUserRating(1);
+        }
+        if(checkBoxStar2.isChecked()){
+            room.setUserRating(2);
+        }
+        if(checkBoxStar3.isChecked()){
+            room.setUserRating(3);
+        }
+        if(checkBoxStar4.isChecked()){
+            room.setUserRating(4);
+        }
+        if(checkBoxStar5.isChecked()){
+            room.setUserRating(5);
+        }
+        SimpleDateFormat sdf=new SimpleDateFormat();
+        Date startDate=sdf.parse(editTextArrivalDate.getText().toString());
+        Date endDate=sdf.parse(editTextDepartureDate.getText().toString());
+
+        if(startDate != null && endDate != null) {
+
+            Calendar calendar = Calendar.getInstance();
+            calendar.setTime(startDate);
+
+            // Loop through the dates
+            while (!calendar.getTime().after(endDate)) {
+                // Format the current date
+                String formattedDate = sdf.format(calendar.getTime());
+                room.addRequestedDate(formattedDate);
+
+                // Increment the date by one day
+                calendar.add(Calendar.DAY_OF_MONTH, 1);
+            }
+        }
+
+        Gson gson=new Gson();
+
+        out.println(gson.toJson(message));
+
+        String reply = in.readLine();
+
+
+        Message messageReply = gson.fromJson(reply, Message.class);
+        System.out.println("Received from server: " + reply);
+
+
+
+
+
         criteriaContainer.setVisibility(View.GONE);
 
         resultsHeader.setVisibility(View.VISIBLE);
