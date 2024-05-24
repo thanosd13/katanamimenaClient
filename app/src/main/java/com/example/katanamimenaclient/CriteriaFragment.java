@@ -107,7 +107,7 @@ public class CriteriaFragment extends Fragment {
         searchButton.setOnClickListener(v -> {
             try {
                 showResults(view);
-            } catch (IOException e) {
+            } catch (IOException | ParseException e) {
                 throw new RuntimeException(e);
             }
         });
