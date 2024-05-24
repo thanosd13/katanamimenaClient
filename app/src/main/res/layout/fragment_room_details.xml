@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="16dp"
+    android:layout_marginEnd="16dp"
+    android:layout_marginBottom="28dp"
+    android:background="@drawable/card_background"
+    tools:context=".RoomDetailsFragment">
+
+    <ImageView
+        android:id="@+id/image_location"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:layout_marginTop="2dp"
+        android:adjustViewBounds="true"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        android:scaleType="fitXY"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:srcCompat="@drawable/room_picture" />
+
+    <TextView
+        android:id="@+id/text_location_name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        app:layout_constraintStart_toEndOf="@id/image_location"
+        app:layout_constraintTop_toTopOf="@id/image_location"
+        android:text="Location Name" />
+
+    <TextView
+        android:id="@+id/text_country_name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        app:layout_constraintStart_toStartOf="@id/text_location_name"
+        app:layout_constraintTop_toBottomOf="@id/text_location_name"
+        android:text="Country" />
+
+    <TextView
+        android:id="@+id/text_price"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:textStyle="bold"
+        app:layout_constraintStart_toStartOf="@id/text_country_name"
+        app:layout_constraintTop_toBottomOf="@id/text_country_name"
+        android:text="100" />
+
+    <TextView
+        android:id="@+id/text_currency"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="4dp"
+        android:textStyle="bold"
+        android:text="€"
+        app:layout_constraintStart_toEndOf="@id/text_price"
+        app:layout_constraintTop_toTopOf="@id/text_price"
+        app:layout_constraintBottom_toBottomOf="@id/text_price" />
+
+    <TextView
+        android:id="@+id/text_rating"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="110dp"
+        android:text="4.5"
+        android:textSize="14sp"
+        app:layout_constraintBottom_toBottomOf="@id/text_price"
+        app:layout_constraintEnd_toStartOf="@id/image_star"
+        app:layout_constraintHorizontal_chainStyle="packed"
+        app:layout_constraintStart_toEndOf="@id/text_currency"
+        app:layout_constraintTop_toTopOf="@id/text_price"
+        app:layout_constraintVertical_bias="1.0" />
+
+    <ImageView
+        android:id="@+id/image_star"
+        android:layout_width="16dp"
+        android:layout_height="20dp"
+        app:layout_constraintBottom_toBottomOf="@id/text_price"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/text_price"
+        app:layout_constraintStart_toEndOf="@id/text_rating"
+        app:srcCompat="@drawable/star" />
+
+    <TextView
+        android:id="@+id/text_rating_count"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="24dp"
+        app:layout_constraintEnd_toEndOf="@id/image_star"
+        app:layout_constraintStart_toStartOf="@id/image_star"
+        app:layout_constraintTop_toBottomOf="@id/image_star"
+        android:text="(100)" />
+
+    <Button
+        android:id="@+id/button_book_now"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Book Now!"
+        app:layout_constraintTop_toBottomOf="@id/image_location"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:layout_marginTop="16dp"
+        android:background="?attr/selectableItemBackground" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
