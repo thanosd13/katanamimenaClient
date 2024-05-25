@@ -14,6 +14,7 @@ import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.example.katanamimenaclient.adapter.RoomDetailsAdapter;
 import com.example.katanamimenaclient.model.RoomDetails;
@@ -33,6 +34,8 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import server.Message;
 import server.MessageType;
@@ -105,11 +108,111 @@ public class CriteriaFragment extends Fragment {
         setupStarCheckBoxes();
 
         searchButton.setOnClickListener(v -> {
-            try {
-                showResults(view);
-            } catch (IOException | ParseException e) {
-                throw new RuntimeException(e);
-            }
+
+            Thread networkThread = new Thread(() -> {
+//                Message response = connect(9999, numberOfPeople[0], maxPrice[0], location, arrivalDate, departureDate, finalStars[0]);
+                System.out.println("Connecting to server...");
+                Socket dataSocket = null;
+                InputStream inputStream = null;
+                OutputStream os = null;
+                try {
+                    dataSocket = new Socket("10.0.2.2", 5678);
+                    inputStream = dataSocket.getInputStream();
+                    os = dataSocket.getOutputStream();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+
+
+
+                BufferedReader in = new BufferedReader(new InputStreamReader(inputStream));
+
+
+                PrintWriter out = new PrintWriter(os, true);
+                System.out.println("Connection to server established.");
+
+
+
+                Message message = new Message();
+                message.setType(MessageType.SEARCH.getValue());
+                Room room=new Room();
+                room.setArea(editTextLocation.getText().toString());
+                room.setNoOfPeople(adultsCount);
+                room.setUserRating(0);
+                if(checkBoxStar1.isChecked()){
+                    room.setUserRating(1);
+                }
+                if(checkBoxStar2.isChecked()){
+                    room.setUserRating(2);
+                }
+                if(checkBoxStar3.isChecked()){
+                    room.setUserRating(3);
+                }
+                if(checkBoxStar4.isChecked()){
+                    room.setUserRating(4);
+                }
+                if(checkBoxStar5.isChecked()){
+                    room.setUserRating(5);
+                }
+                SimpleDateFormat sdf=new SimpleDateFormat();
+                Date startDate= null;
+                Date endDate= null;
+
+
+                try {
+                    startDate = sdf.parse(editTextArrivalDate.getText().toString());
+                    endDate = sdf.parse(editTextDepartureDate.getText().toString());
+                } catch (ParseException e) {
+                    throw new RuntimeException(e);
+                }
+
+                if(startDate != null && endDate != null) {
+
+                    Calendar calendar = Calendar.getInstance();
+                    calendar.setTime(startDate);
+
+                    // Loop through the dates
+                    while (!calendar.getTime().after(endDate)) {
+                        // Format the current date
+                        String formattedDate = sdf.format(calendar.getTime());
+                        room.addRequestedDate(formattedDate);
+
+                        // Increment the date by one day
+                        calendar.add(Calendar.DAY_OF_MONTH, 1);
+                    }
+                }
+
+                Gson gson=new Gson();
+
+                out.println(gson.toJson(message));
+                String reply;
+
+                try {
+                     reply = in.readLine();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+                Message messageReply = gson.fromJson(reply, Message.class);
+                System.out.println("Received from server: " + reply);
+
+
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        criteriaContainer.setVisibility(View.GONE);
+
+                        resultsHeader.setVisibility(View.VISIBLE);
+                        recyclerView = view.findViewById(R.id.resultsList);
+                        recyclerView.setVisibility(View.VISIBLE);
+                        ArrayList<Room> rooms= (ArrayList<Room>) messageReply.getResults();
+
+
+                    });
+                }
+            });
+            networkThread.start();
+
+
+
         });
 
         return view;
@@ -168,7 +271,14 @@ public class CriteriaFragment extends Fragment {
         }
     };
 
-    private void showResults(View view) throws IOException, ParseException {
+    private void search(View view) throws IOException, ParseException {
+
+
+
+
+
+
+
 
 
 
@@ -233,6 +343,40 @@ public class CriteriaFragment extends Fragment {
 
         Message messageReply = gson.fromJson(reply, Message.class);
         System.out.println("Received from server: " + reply);
+
+        //RATE ROOM
+
+//        Message message1=new Message();
+//        Room room1=new Room();
+//        if(checkBoxStar1.isChecked()){
+//            room1.setStars(1);
+//        }
+//        if(checkBoxStar2.isChecked()){
+//            room1.setStars(2);
+//        }
+//        if(checkBoxStar3.isChecked()){
+//            room1.setStars(3);
+//        }
+//        if(checkBoxStar4.isChecked()){
+//            room1.setStars(4);
+//        }
+//        if(checkBoxStar5.isChecked()){
+//            room1.setStars(5);
+//        }
+//        message1.setType(MessageType.RATE_ROOM.getValue());
+//
+//        Gson gson1=new Gson();
+//
+//        out.println(gson.toJson(message));
+//
+//        String reply1 = in.readLine();
+//
+//
+//        Message messageReply1 = gson.fromJson(reply, Message.class);
+//        System.out.println("Received from server: " + reply);
+
+
+        //TSEKARE TO MESSAGE.CONTENT
 
 
 
