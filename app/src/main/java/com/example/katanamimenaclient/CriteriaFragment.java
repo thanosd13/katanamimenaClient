@@ -14,7 +14,6 @@ import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ScrollView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.example.katanamimenaclient.adapter.RoomDetailsAdapter;
 import com.example.katanamimenaclient.model.RoomDetails;
@@ -34,25 +33,26 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.Set;
 
 import server.Message;
 import server.MessageType;
 import server.Room;
 
-public class CriteriaFragment extends Fragment {
+public class CriteriaFragment extends Fragment implements RoomDetailsAdapter.CriteriaFragmentVisibilityHandler {
 
     private int adultsCount = 1;
     private TextView textAdultsCount;
-    private EditText editTextArrivalDate, editTextDepartureDate,editTextPrice,editTextLocation;
+    private EditText editTextArrivalDate, editTextDepartureDate, editTextPrice, editTextLocation;
     private CheckBox checkBoxStar1, checkBoxStar2, checkBoxStar3, checkBoxStar4, checkBoxStar5;
     private RecyclerView recyclerView;
     private ScrollView criteriaContainer;
     private TextView resultsHeader;
     private Button searchButton;
 
+    private Button homePage;
 
+    private Set<String> requestedDates;
 
     public CriteriaFragment() {
         // Required empty public constructor
@@ -78,11 +78,12 @@ public class CriteriaFragment extends Fragment {
         Button buttonDecrease = view.findViewById(R.id.buttonDecrease);
         searchButton = view.findViewById(R.id.searchButton);
         resultsHeader = view.findViewById(R.id.resultsHeader);
-
+        recyclerView = view.findViewById(R.id.resultsList);
+        homePage = view.findViewById(R.id.homePage);
         editTextArrivalDate = view.findViewById(R.id.arrivalInput);
         editTextDepartureDate = view.findViewById(R.id.departureInput);
-        editTextLocation=view.findViewById(R.id.locationInput);
-        editTextPrice=view.findViewById(R.id.priceInput);
+        editTextLocation = view.findViewById(R.id.locationInput);
+        editTextPrice = view.findViewById(R.id.priceInput);
 
         buttonIncrease.setOnClickListener(v -> {
             adultsCount++;
@@ -107,14 +108,18 @@ public class CriteriaFragment extends Fragment {
 
         setupStarCheckBoxes();
 
-        searchButton.setOnClickListener(v -> {
+        homePage.setOnClickListener(v -> {
+            criteriaContainer.setVisibility(View.VISIBLE);
+            homePage.setVisibility(View.GONE);
+            resultsHeader.setVisibility(View.GONE);
+        });
 
+        searchButton.setOnClickListener(v -> {
             Thread networkThread = new Thread(() -> {
-//                Message response = connect(9999, numberOfPeople[0], maxPrice[0], location, arrivalDate, departureDate, finalStars[0]);
                 System.out.println("Connecting to server...");
-                Socket dataSocket = null;
-                InputStream inputStream = null;
-                OutputStream os = null;
+                Socket dataSocket;
+                InputStream inputStream;
+                OutputStream os;
                 try {
                     dataSocket = new Socket("10.0.2.2", 5678);
                     inputStream = dataSocket.getInputStream();
@@ -123,42 +128,35 @@ public class CriteriaFragment extends Fragment {
                     throw new RuntimeException(e);
                 }
 
-
-
                 BufferedReader in = new BufferedReader(new InputStreamReader(inputStream));
-
-
                 PrintWriter out = new PrintWriter(os, true);
                 System.out.println("Connection to server established.");
 
-
-
                 Message message = new Message();
                 message.setType(MessageType.SEARCH.getValue());
-                Room room=new Room();
+                Room room = new Room();
+                room.setPrice(Double.valueOf(editTextPrice.getText().toString()));
                 room.setArea(editTextLocation.getText().toString());
                 room.setNoOfPeople(adultsCount);
                 room.setUserRating(0);
-                if(checkBoxStar1.isChecked()){
+                if (checkBoxStar1.isChecked()) {
                     room.setUserRating(1);
                 }
-                if(checkBoxStar2.isChecked()){
+                if (checkBoxStar2.isChecked()) {
                     room.setUserRating(2);
                 }
-                if(checkBoxStar3.isChecked()){
+                if (checkBoxStar3.isChecked()) {
                     room.setUserRating(3);
                 }
-                if(checkBoxStar4.isChecked()){
+                if (checkBoxStar4.isChecked()) {
                     room.setUserRating(4);
                 }
-                if(checkBoxStar5.isChecked()){
+                if (checkBoxStar5.isChecked()) {
                     room.setUserRating(5);
                 }
-                SimpleDateFormat sdf=new SimpleDateFormat();
-                Date startDate= null;
-                Date endDate= null;
-
-
+                SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
+                Date startDate = null;
+                Date endDate = null;
                 try {
                     startDate = sdf.parse(editTextArrivalDate.getText().toString());
                     endDate = sdf.parse(editTextDepartureDate.getText().toString());
@@ -166,56 +164,88 @@ public class CriteriaFragment extends Fragment {
                     throw new RuntimeException(e);
                 }
 
-                if(startDate != null && endDate != null) {
-
+                if (startDate != null && endDate != null) {
                     Calendar calendar = Calendar.getInstance();
                     calendar.setTime(startDate);
-
-                    // Loop through the dates
                     while (!calendar.getTime().after(endDate)) {
-                        // Format the current date
                         String formattedDate = sdf.format(calendar.getTime());
                         room.addRequestedDate(formattedDate);
-
-                        // Increment the date by one day
                         calendar.add(Calendar.DAY_OF_MONTH, 1);
                     }
                 }
 
-                Gson gson=new Gson();
-
+                Gson gson = new Gson();
+                message.setRoom(room);
                 out.println(gson.toJson(message));
                 String reply;
 
                 try {
-                     reply = in.readLine();
+                    reply = in.readLine();
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
+
                 Message messageReply = gson.fromJson(reply, Message.class);
                 System.out.println("Received from server: " + reply);
 
-
                 if (getActivity() != null) {
                     getActivity().runOnUiThread(() -> {
+                        ArrayList<Room> rooms = (ArrayList<Room>) messageReply.getResults();
+                        if(rooms.isEmpty()){
+                            homePage.setVisibility(View.VISIBLE);
+                            recyclerView.setVisibility(View.GONE);
+                        } else {
+                            homePage.setVisibility(View.GONE);
+                        }
                         criteriaContainer.setVisibility(View.GONE);
-
                         resultsHeader.setVisibility(View.VISIBLE);
-                        recyclerView = view.findViewById(R.id.resultsList);
                         recyclerView.setVisibility(View.VISIBLE);
-                        ArrayList<Room> rooms= (ArrayList<Room>) messageReply.getResults();
 
+                        List<RoomDetails> roomDetailsList = new ArrayList<>();
+                        for (Room roomDetail : rooms) {
+                            RoomDetails details = new RoomDetails(
+                                    roomDetail.getArea(),
+                                    roomDetail.getArea(),
+                                    roomDetail.getPrice(),
+                                    roomDetail.getStars(),
+                                    roomDetail.getNoOfReviews(),
+                                    R.drawable.room_picture,
+                                    room.getRequestedDates(),
+                                    roomDetail.getName()
 
+                            );
+                            roomDetailsList.add(details);
+                        }
+                        RoomDetailsAdapter adapter = new RoomDetailsAdapter(getContext(), roomDetailsList, this);
+                        recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
+                        recyclerView.setAdapter(adapter);
                     });
                 }
             });
             networkThread.start();
-
-
-
         });
 
         return view;
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // Make the criteriaContainer visible and hide the resultsHeader and resultsList when returning to this fragment
+        criteriaContainer.setVisibility(View.VISIBLE);
+        resultsHeader.setVisibility(View.GONE);
+        recyclerView.setVisibility(View.GONE);
+    }
+
+    @Override
+    public void showCriteriaFragment() {
+        showCriteriaAndHideResults();
+    }
+
+    public void showCriteriaAndHideResults() {
+        criteriaContainer.setVisibility(View.VISIBLE);
+        resultsHeader.setVisibility(View.GONE);
+        recyclerView.setVisibility(View.GONE);
     }
 
     private void showDatePickerDialog(boolean isArrival) {
@@ -233,34 +263,22 @@ public class CriteriaFragment extends Fragment {
                     }
                 },
                 calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH));
-
         datePickerDialog.getDatePicker().setMinDate(calendar.getTimeInMillis());
-
-        if (!isArrival && editTextArrivalDate.getText().length() > 0) {
-            try {
-                SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
+        try {
+            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
+            if (!isArrival && editTextArrivalDate.getText().length() > 0) {
                 Calendar arrivalCalendar = Calendar.getInstance();
                 arrivalCalendar.setTime(sdf.parse(editTextArrivalDate.getText().toString()));
                 datePickerDialog.getDatePicker().setMinDate(arrivalCalendar.getTimeInMillis());
-            } catch (Exception e) {
-                e.printStackTrace();
             }
+        } catch (ParseException e) {
+            e.printStackTrace();
         }
-
         datePickerDialog.show();
     }
 
     private void setupStarCheckBoxes() {
-        checkBoxStar1.setOnCheckedChangeListener(starCheckedChangeListener);
-        checkBoxStar2.setOnCheckedChangeListener(starCheckedChangeListener);
-        checkBoxStar3.setOnCheckedChangeListener(starCheckedChangeListener);
-        checkBoxStar4.setOnCheckedChangeListener(starCheckedChangeListener);
-        checkBoxStar5.setOnCheckedChangeListener(starCheckedChangeListener);
-    }
-
-    private final CompoundButton.OnCheckedChangeListener starCheckedChangeListener = new CompoundButton.OnCheckedChangeListener() {
-        @Override
-        public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+        CompoundButton.OnCheckedChangeListener starCheckedChangeListener = (buttonView, isChecked) -> {
             if (isChecked) {
                 checkBoxStar1.setChecked(checkBoxStar1 == buttonView);
                 checkBoxStar2.setChecked(checkBoxStar2 == buttonView);
@@ -268,136 +286,11 @@ public class CriteriaFragment extends Fragment {
                 checkBoxStar4.setChecked(checkBoxStar4 == buttonView);
                 checkBoxStar5.setChecked(checkBoxStar5 == buttonView);
             }
-        }
-    };
-
-    private void search(View view) throws IOException, ParseException {
-
-
-
-
-
-
-
-
-
-
-
-        System.out.println("Connecting to server...");
-        Socket dataSocket = new Socket("localhost", 5678);
-        InputStream inputStream = dataSocket.getInputStream();
-        BufferedReader in = new BufferedReader(new InputStreamReader(inputStream));
-        OutputStream os = dataSocket.getOutputStream();
-        PrintWriter out = new PrintWriter(os, true);
-        System.out.println("Connection to server established.");
-
-
-
-        Message message = new Message();
-        message.setType(MessageType.SEARCH.getValue());
-        Room room=new Room();
-        room.setArea(editTextLocation.getText().toString());
-        room.setNoOfPeople(adultsCount);
-        room.setUserRating(0);
-        if(checkBoxStar1.isChecked()){
-            room.setUserRating(1);
-        }
-        if(checkBoxStar2.isChecked()){
-            room.setUserRating(2);
-        }
-        if(checkBoxStar3.isChecked()){
-            room.setUserRating(3);
-        }
-        if(checkBoxStar4.isChecked()){
-            room.setUserRating(4);
-        }
-        if(checkBoxStar5.isChecked()){
-            room.setUserRating(5);
-        }
-        SimpleDateFormat sdf=new SimpleDateFormat();
-        Date startDate=sdf.parse(editTextArrivalDate.getText().toString());
-        Date endDate=sdf.parse(editTextDepartureDate.getText().toString());
-
-        if(startDate != null && endDate != null) {
-
-            Calendar calendar = Calendar.getInstance();
-            calendar.setTime(startDate);
-
-            // Loop through the dates
-            while (!calendar.getTime().after(endDate)) {
-                // Format the current date
-                String formattedDate = sdf.format(calendar.getTime());
-                room.addRequestedDate(formattedDate);
-
-                // Increment the date by one day
-                calendar.add(Calendar.DAY_OF_MONTH, 1);
-            }
-        }
-
-        Gson gson=new Gson();
-
-        out.println(gson.toJson(message));
-
-        String reply = in.readLine();
-
-
-        Message messageReply = gson.fromJson(reply, Message.class);
-        System.out.println("Received from server: " + reply);
-
-        //RATE ROOM
-
-//        Message message1=new Message();
-//        Room room1=new Room();
-//        if(checkBoxStar1.isChecked()){
-//            room1.setStars(1);
-//        }
-//        if(checkBoxStar2.isChecked()){
-//            room1.setStars(2);
-//        }
-//        if(checkBoxStar3.isChecked()){
-//            room1.setStars(3);
-//        }
-//        if(checkBoxStar4.isChecked()){
-//            room1.setStars(4);
-//        }
-//        if(checkBoxStar5.isChecked()){
-//            room1.setStars(5);
-//        }
-//        message1.setType(MessageType.RATE_ROOM.getValue());
-//
-//        Gson gson1=new Gson();
-//
-//        out.println(gson.toJson(message));
-//
-//        String reply1 = in.readLine();
-//
-//
-//        Message messageReply1 = gson.fromJson(reply, Message.class);
-//        System.out.println("Received from server: " + reply);
-
-
-        //TSEKARE TO MESSAGE.CONTENT
-
-
-
-
-
-        criteriaContainer.setVisibility(View.GONE);
-
-        resultsHeader.setVisibility(View.VISIBLE);
-        recyclerView = view.findViewById(R.id.resultsList);
-        recyclerView.setVisibility(View.VISIBLE);
-
-        List<RoomDetails> roomDetailsList = new ArrayList<>();
-        roomDetailsList.add(new RoomDetails("Paris", "France", 200, 4.5f, 150, R.drawable.room_picture));
-        roomDetailsList.add(new RoomDetails("London", "UK", 250, 4.7f, 200, R.drawable.room_picture));
-        roomDetailsList.add(new RoomDetails("Paris", "France", 200, 4.5f, 150, R.drawable.room_picture));
-        roomDetailsList.add(new RoomDetails("London", "UK", 250, 4.7f, 200, R.drawable.room_picture));
-        roomDetailsList.add(new RoomDetails("Paris", "France", 200, 4.5f, 150, R.drawable.room_picture));
-        roomDetailsList.add(new RoomDetails("London", "UK", 250, 4.7f, 200, R.drawable.room_picture));
-
-        recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-        RoomDetailsAdapter adapter = new RoomDetailsAdapter(getContext(), roomDetailsList);
-        recyclerView.setAdapter(adapter);
+        };
+        checkBoxStar1.setOnCheckedChangeListener(starCheckedChangeListener);
+        checkBoxStar2.setOnCheckedChangeListener(starCheckedChangeListener);
+        checkBoxStar3.setOnCheckedChangeListener(starCheckedChangeListener);
+        checkBoxStar4.setOnCheckedChangeListener(starCheckedChangeListener);
+        checkBoxStar5.setOnCheckedChangeListener(starCheckedChangeListener);
     }
 }

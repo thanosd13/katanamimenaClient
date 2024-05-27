@@ -5,8 +5,7 @@ import androidx.fragment.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.Toast;
+import android.widget.ImageView;
 
 public class RoomDetailsFragment extends Fragment {
 
@@ -24,11 +23,10 @@ public class RoomDetailsFragment extends Fragment {
         // Inflate the layout for this fragment
         View view = inflater.inflate(R.layout.fragment_room_details, container, false);
 
-        Button bookNowButton = view.findViewById(R.id.button_book_now);
-        bookNowButton.setOnClickListener(v -> {
-            Toast.makeText(getContext(), "Book Now button clicked!", Toast.LENGTH_SHORT).show();
-        });
+        ImageView backButton = view.findViewById(R.id.back_button);
 
         return view;
     }
+
+
 }

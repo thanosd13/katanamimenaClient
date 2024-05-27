@@ -183,6 +183,14 @@
         android:paddingBottom="20dp"
         android:visibility="gone" />
 
+    <Button
+        android:id="@+id/homePage"
+        style="@style/CustomButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        android:text="Search Page" />
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/resultsList"
         android:layout_width="match_parent"
@@ -192,3 +200,4 @@
         tools:listitem="@layout/fragment_room_details" />
 
 </LinearLayout>
+
